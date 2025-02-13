@@ -202,7 +202,7 @@ def snowflake_api_call(query: str, jwt_token:str, limit: int = 10):
 
     logger.info(f"Making API call with query: {query}")
 
-    url = f"{SNOWFLAKE_ACCOUNT_URL}/api/v2/cortex/agent:run"
+    url = f"https://{SNOWFLAKE_ACCOUNT_URL}/api/v2/cortex/agent:run"
     
     headers = {
         'X-Snowflake-Authorization-Token-Type': 'KEYPAIR_JWT',
@@ -250,7 +250,7 @@ def snowflake_api_call(query: str, jwt_token:str, limit: int = 10):
     try:
         logger.info("Sending API request")
         response = requests.post(
-            url=f"https://{url}",
+            url=url,
             headers=headers,
             json=payload,
             stream=True
@@ -316,8 +316,8 @@ def process_sse_response(sse_client):
     return text, sql
 
 def main():
-    st.title("Sales Intelligence Platform")
-
+    st.title("Intelligent Sales Assistant")
+    
     # Initialize JWT Generator
     jwt_token = generate_jwt.JWTGenerator(
         SNOWFLAKE_ACCOUNT,
