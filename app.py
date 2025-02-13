@@ -317,7 +317,7 @@ def process_sse_response(sse_client):
 
 def main():
     st.title("Intelligent Sales Assistant")
-    
+
     # Initialize JWT Generator
     jwt_token = generate_jwt.JWTGenerator(
         SNOWFLAKE_ACCOUNT,
@@ -339,10 +339,10 @@ def main():
     # Chat input form
     with st.form(key="query_form"):
         query = st.text_area(
-            "",
+            "Enter your question here...",
             placeholder="Ask about sales conversations or sales data...",
             key="query_input",
-            height=100
+            height=100,
         )
         submit = st.form_submit_button("Submit")
 
