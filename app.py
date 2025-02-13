@@ -9,7 +9,7 @@ import logging
 import pandas as pd
 import snowflake.connector
 
-load_dotenv()
+load_dotenv(override=True)
 
 # Configure logging
 logging.basicConfig(
@@ -32,9 +32,9 @@ SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
 SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE")
 SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
 RSA_PRIVATE_KEY_PATH = os.getenv("RSA_PRIVATE_KEY_PATH")
+PRIVATE_KEY_PASSPHRASE = os.getenv("PRIVATE_KEY_PASSPHRASE")
 CORTEX_SEARCH_SERVICES = "sales_intelligence.data.sales_conversation_search"
 SEMANTIC_MODELS = "@sales_intelligence.data.models/sales_metrics_model.yaml"
-
 
 # Custom CSS styling
 st.markdown("""
@@ -195,16 +195,15 @@ def run_snowflake_query(query):
         return results, columns
 
     except Exception as e:
-        print(f"Error executing SQL: {str(e)}")
+        st.error(f"Error executing SQL: {str(e)}")
+        return None, None
 
 def snowflake_api_call(query: str, jwt_token:str, limit: int = 10):
-    """Make API call with JWT token"""
+
     logger.info(f"Making API call with query: {query}")
 
-    # API endpoint
     url = f"{SNOWFLAKE_ACCOUNT_URL}/api/v2/cortex/agent:run"
     
-    # Headers
     headers = {
         'X-Snowflake-Authorization-Token-Type': 'KEYPAIR_JWT',
         'Content-Type': 'application/json',
@@ -212,7 +211,6 @@ def snowflake_api_call(query: str, jwt_token:str, limit: int = 10):
         'Authorization': f'Bearer {jwt_token}'
     }
     
-    # Request payload
     payload = {
         "model": "claude-3-5-sonnet",
         "messages": [
@@ -275,13 +273,10 @@ def process_sse_response(sse_client):
     """Process SSE response"""
     logger.info("Processing SSE response")
     text = ""
-    citations = []
-    debug_info = ""
     sql = ""
-    other_info = ""
     
     if not sse_client:
-        return text, citations, debug_info, sql, other_info
+        return text, sql
         
     try:
         for event in sse_client.events():
@@ -296,10 +291,7 @@ def process_sse_response(sse_client):
                     for content_item in data['delta']['content']:
                         content_type = content_item.get('type')
                         
-                        if content_type == "tool_use":
-                            tool_use = content_item.get('tool_use', {})
-                            
-                        elif content_type == "tool_results":
+                        if content_type == "tool_results":
                             tool_results = content_item.get('tool_results', {})
                             if 'content' in tool_results:
                                 for result in tool_results['content']:
@@ -310,6 +302,8 @@ def process_sse_response(sse_client):
                                         for search_result in search_results:
                                             text += f"\n• {search_result.get('text', '')}"
                                         sql = result.get('json', {}).get('sql', '')
+                        if content_type == 'text':
+                            text += content_item.get('text', '')
                             
             except json.JSONDecodeError as e:
                 logger.warning(f"Failed to parse event data: {str(e)}")
@@ -319,13 +313,18 @@ def process_sse_response(sse_client):
         logger.error(f"Error processing events: {str(e)}", exc_info=True)
         st.error(f"Error processing events: {str(e)}")
         
-    return text, citations, debug_info, sql, other_info
+    return text, sql
 
 def main():
     st.title("Sales Intelligence Platform")
 
     # Initialize JWT Generator
-    jwt_token = generate_jwt.JWTGenerator(SNOWFLAKE_ACCOUNT,SNOWFLAKE_USER,RSA_PRIVATE_KEY_PATH).get_token()
+    jwt_token = generate_jwt.JWTGenerator(
+        SNOWFLAKE_ACCOUNT,
+        SNOWFLAKE_USER,
+        RSA_PRIVATE_KEY_PATH,
+        PRIVATE_KEY_PASSPHRASE
+        ).get_token()
 
     # Sidebar for new chat
     with st.sidebar:
@@ -354,7 +353,7 @@ def main():
         # Get response from API
         with st.spinner("Processing your request..."):
             sse_client = snowflake_api_call(query, jwt_token)
-            text, citations, debug_info, sql, other_info = process_sse_response(sse_client)
+            text, sql = process_sse_response(sse_client)
             
             # Add assistant response to chat
             if text:
@@ -380,14 +379,6 @@ def main():
                     df = pd.DataFrame(sales_results, columns=column_names)
                     st.write("### Sales Metrics Report")
                     st.dataframe(df)
-
-            
-            # Display citations if present
-            if citations:
-                st.markdown("### Citations")
-                for i, citation in enumerate(citations, 1):
-                    st.markdown(f"{i}. {citation.get('chunk', '')}")
-
 
 if __name__ == "__main__":
     main()

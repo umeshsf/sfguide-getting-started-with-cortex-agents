@@ -44,7 +44,7 @@ class JWTGenerator(object):
     RENEWAL_DELTA = timedelta(minutes=54)  # Tokens will be renewed after 54 minutes
     ALGORITHM = "RS256"  # Tokens will be generated using RSA with SHA256
 
-    def __init__(self, account: Text, user: Text, private_key_file_path: Text,
+    def __init__(self, account: Text, user: Text, private_key_file_path: Text, private_key_passphrase: Text,
                  lifetime: timedelta = LIFETIME, renewal_delay: timedelta = RENEWAL_DELTA):
         """
         __init__ creates an object that generates JWTs for the specified user, account identifier, and private key.
@@ -79,7 +79,7 @@ class JWTGenerator(object):
                 self.private_key = load_pem_private_key(pemlines, None, default_backend())
             except TypeError:
                 # If that fails, provide the passphrase returned from get_private_key_passphrase().
-                self.private_key = load_pem_private_key(pemlines, get_private_key_passphrase().encode(), default_backend())
+                self.private_key = load_pem_private_key(pemlines, private_key_passphrase.encode(), default_backend())
 
     def prepare_account_name_for_jwt(self, raw_account: Text) -> Text:
         """
