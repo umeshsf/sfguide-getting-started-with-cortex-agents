@@ -316,7 +316,7 @@ def process_sse_response(sse_client):
     return text, sql
 
 def main():
-    st.title("Sales Intelligence Platform")
+    st.title("Intelligent Sales Assistant")
 
     # Initialize JWT Generator
     jwt_token = generate_jwt.JWTGenerator(
