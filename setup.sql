@@ -94,4 +94,4 @@ CREATE OR REPLACE CORTEX SEARCH SERVICE sales_conversation_search
     WHERE conversation_date >= '2024-01-01' 
 );
 
-CREATE OR REPLACE STAGE sales_intelligence.data.models;
+CREATE OR REPLACE STAGE models DIRECTORY = (ENABLE = TRUE);
