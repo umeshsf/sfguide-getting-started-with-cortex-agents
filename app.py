@@ -212,7 +212,7 @@ def snowflake_api_call(query: str, jwt_token:str, limit: int = 10):
     }
     
     payload = {
-        "model": "claude-3-5-sonnet",
+        "model": "llama3.3-70b",
         "messages": [
             {
                 "role": "user",
