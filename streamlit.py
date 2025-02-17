@@ -1,38 +1,13 @@
 import streamlit as st
 import json
-import requests
-import sseclient
-import os
-from dotenv import load_dotenv
-import generate_jwt
-import logging
-import pandas as pd
-import snowflake.connector
+import _snowflake
+from snowflake.snowpark.context import get_active_session
 
-load_dotenv(override=True)
+session = get_active_session()
 
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('app.log')
-    ]
-)
-logger = logging.getLogger(__name__)
+API_ENDPOINT = "/api/v2/cortex/agent:run"
+API_TIMEOUT = 50000  # in milliseconds
 
-# Constants
-SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
-SNOWFLAKE_ACCOUNT_URL = os.getenv("SNOWFLAKE_ACCOUNT_URL")
-SNOWFLAKE_USER = os.getenv("SNOWFLAKE_USER")
-SNOWFLAKE_PASSWORD = os.getenv("SNOWFLAKE_PASSWORD")
-SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_ROLE")
-SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
-SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE")
-SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
-RSA_PRIVATE_KEY_PATH = os.getenv("RSA_PRIVATE_KEY_PATH")
-PRIVATE_KEY_PASSPHRASE = os.getenv("PRIVATE_KEY_PASSPHRASE")
 CORTEX_SEARCH_SERVICES = "sales_intelligence.data.sales_conversation_search"
 SEMANTIC_MODELS = "@sales_intelligence.data.models/sales_metrics_model.yaml"
 
@@ -174,42 +149,15 @@ button[data-testid="stBaseButton-secondaryFormSubmit"] {
 
 def run_snowflake_query(query):
     try:
-        conn = snowflake.connector.connect(
-            account=SNOWFLAKE_ACCOUNT,
-            host=SNOWFLAKE_ACCOUNT_URL,
-            user=SNOWFLAKE_USER,
-            password=SNOWFLAKE_PASSWORD,
-            role=SNOWFLAKE_ROLE,
-            warehouse=SNOWFLAKE_WAREHOUSE,
-            database=SNOWFLAKE_DATABASE,
-            schema=SNOWFLAKE_SCHEMA
-        )
+        df = session.sql(query.replace(';',''))
         
-        cursor = conn.cursor()
-        cursor.execute(query)
-        columns = [col[0] for col in cursor.description]
-        results = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-        return results, columns
+        return df
 
     except Exception as e:
         st.error(f"Error executing SQL: {str(e)}")
         return None, None
 
-def snowflake_api_call(query: str, jwt_token:str, limit: int = 10):
-
-    logger.info(f"Making API call with query: {query}")
-
-    url = f"https://{SNOWFLAKE_ACCOUNT_URL}/api/v2/cortex/agent:run"
-    
-    headers = {
-        'X-Snowflake-Authorization-Token-Type': 'KEYPAIR_JWT',
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
-        'Authorization': f'Bearer {jwt_token}'
-    }
+def snowflake_api_call(query: str, limit: int = 10):
     
     payload = {
         "model": "llama3.3-70b",
@@ -248,83 +196,69 @@ def snowflake_api_call(query: str, jwt_token:str, limit: int = 10):
     }
     
     try:
-        logger.info("Sending API request")
-        response = requests.post(
-            url=url,
-            headers=headers,
-            json=payload,
-            stream=True
+        resp = _snowflake.send_snow_api_request(
+            "POST",  # method
+            API_ENDPOINT,  # path
+            {},  # headers
+            {},  # params
+            payload,  # body
+            None,  # request_guid
+            API_TIMEOUT,  # timeout in milliseconds,
         )
-        
-        if response.status_code != 200:
-            logger.error(f"Error response: {response.status_code} - {response.text}")
-            st.error(f"Error: {response.status_code} - {response.text}")
+        try:
+            response_content = json.loads(resp["content"])
+        except json.JSONDecodeError:
+            st.error("❌ Failed to parse API response. The server may have returned an invalid JSON format.")
+
+        if resp["status"] != 200:
+            st.error(f"Error:{resp['status']} ")
             return None
             
-        logger.info("Successfully created SSE client")
-        return sseclient.SSEClient(response)
+        return response_content
             
     except Exception as e:
-        logger.error(f"Error making request: {str(e)}", exc_info=True)
         st.error(f"Error making request: {str(e)}")
         return None
 
-def process_sse_response(sse_client):
+def process_sse_response(response):
     """Process SSE response"""
-    logger.info("Processing SSE response")
     text = ""
     sql = ""
     
-    if not sse_client:
+    if not response:
         return text, sql
         
     try:
-        for event in sse_client.events():
-            logger.debug(f"Received SSE event: {event.data}")
-            if event.data == "[DONE]":
-                break
+        for event in response:
+            if event.get('event') == "message.delta":
+                data = event.get('data', {})
+                delta = data.get('delta', {})
                 
-            try:
-                data = json.loads(event.data)
-                
-                if 'delta' in data and 'content' in data['delta']:
-                    for content_item in data['delta']['content']:
-                        content_type = content_item.get('type')
-                        
-                        if content_type == "tool_results":
-                            tool_results = content_item.get('tool_results', {})
-                            if 'content' in tool_results:
-                                for result in tool_results['content']:
-                                    if result.get('type') == 'json':
-                                        logger.debug(f"JSON result: {result}")
-                                        text += result.get('json', {}).get('text', '')
-                                        search_results = result.get('json', {}).get('searchResults', [])
-                                        for search_result in search_results:
-                                            text += f"\n• {search_result.get('text', '')}"
-                                        sql = result.get('json', {}).get('sql', '')
-                        if content_type == 'text':
-                            text += content_item.get('text', '')
+                for content_item in delta.get('content', []):
+                    content_type = content_item.get('type')
+                    if content_type == "tool_results":
+                        tool_results = content_item.get('tool_results', {})
+                        if 'content' in tool_results:
+                            for result in tool_results['content']:
+                                if result.get('type') == 'json':
+                                    text += result.get('json', {}).get('text', '')
+                                    search_results = result.get('json', {}).get('searchResults', [])
+                                    for search_result in search_results:
+                                        text += f"\n• {search_result.get('text', '')}"
+                                    sql = result.get('json', {}).get('sql', '')
+                    if content_type == 'text':
+                        text += content_item.get('text', '')
                             
-            except json.JSONDecodeError as e:
-                logger.warning(f"Failed to parse event data: {str(e)}")
-                continue
+    except json.JSONDecodeError as e:
+        st.error(f"Error processing events: {str(e)}")
                 
     except Exception as e:
-        logger.error(f"Error processing events: {str(e)}", exc_info=True)
         st.error(f"Error processing events: {str(e)}")
         
     return text, sql
 
 def main():
     st.title("Intelligent Sales Assistant")
-
-    # Initialize JWT Generator
-    jwt_token = generate_jwt.JWTGenerator(
-        SNOWFLAKE_ACCOUNT,
-        SNOWFLAKE_USER,
-        RSA_PRIVATE_KEY_PATH,
-        PRIVATE_KEY_PASSPHRASE
-        ).get_token()
 
     # Sidebar for new chat
     with st.sidebar:
@@ -336,49 +270,35 @@ def main():
     if 'messages' not in st.session_state:
         st.session_state.messages = []
 
-    # Chat input form
-    with st.form(key="query_form"):
-        query = st.text_area(
-            "Enter your question here...",
-            placeholder="Ask about sales conversations or sales data...",
-            key="query_input",
-            height=100,
-        )
-        submit = st.form_submit_button("Submit")
+    for message in st.session_state.messages:
+        with st.chat_message(message['role']):
+            st.markdown(message['content'].replace("•", "\n\n-"))
 
-    if submit and query:
+    if query := st.chat_input("Would you like to learn?"):
         # Add user message to chat
+        with st.chat_message("user"):
+            st.markdown(query)
         st.session_state.messages.append({"role": "user", "content": query})
         
         # Get response from API
         with st.spinner("Processing your request..."):
-            sse_client = snowflake_api_call(query, jwt_token)
-            text, sql = process_sse_response(sse_client)
+            response = snowflake_api_call(query)
+            text, sql = process_sse_response(response)
             
             # Add assistant response to chat
             if text:
                 st.session_state.messages.append({"role": "assistant", "content": text})
+                with st.chat_message("assistant"):
+                    st.markdown(text.replace("•", "\n\n-"))
 
-            # Display chat history
-            for message in st.session_state.messages:
-                logger.info(f"Message: {message}")
-                with st.container():
-                    if message["role"] == "user":
-                        st.markdown("**You:**")
-                    else:
-                        st.markdown("**Assistant:**")
-                    st.markdown(message["content"].replace("•", "\n\n-"))
-                    st.markdown("---")
-            
             # Display SQL if present
             if sql:
                 st.markdown("### Generated SQL")
                 st.code(sql, language="sql")
-                sales_results, column_names = run_snowflake_query(sql)
+                sales_results = run_snowflake_query(sql)
                 if sales_results:
-                    df = pd.DataFrame(sales_results, columns=column_names)
                     st.write("### Sales Metrics Report")
-                    st.dataframe(df)
+                    st.dataframe(sales_results)
 
 if __name__ == "__main__":
     main()
