@@ -160,7 +160,7 @@ def run_snowflake_query(query):
 def snowflake_api_call(query: str, limit: int = 10):
     
     payload = {
-        "model": "llama3.3-70b",
+        "model": "llama3.1-70b",
         "messages": [
             {
                 "role": "user",
@@ -282,7 +282,7 @@ def main():
         
         # Get response from API
         with st.spinner("Processing your request..."):
-            response = snowflake_api_call(query)
+            response = snowflake_api_call(query, 1)
             text, sql = process_sse_response(response)
             
             # Add assistant response to chat
