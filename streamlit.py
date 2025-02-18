@@ -282,7 +282,7 @@ def main():
         
         # Get response from API
         with st.spinner("Processing your request..."):
-            response = snowflake_api_call(query)
+            response = snowflake_api_call(query, 1)
             text, sql = process_sse_response(response)
             
             # Add assistant response to chat
