@@ -210,8 +210,8 @@ def snowflake_api_call(query: str, limit: int = 10):
         except json.JSONDecodeError:
             st.error("❌ Failed to parse API response. The server may have returned an invalid JSON format.")
 
-        if resp["status"] != 200:
-            st.error(f"Error:{resp['status']} ")
+            if resp["status"] != 200:
+                st.error(f"Error:{resp} ") # instead of st.error(f"Error:{resp['status']} ")
             return None
             
         return response_content
