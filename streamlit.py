@@ -1,8 +1,6 @@
 import streamlit as st
 import json
 import _snowflake
-import re
-import unicodedata
 from snowflake.snowpark.context import get_active_session
 
 session = get_active_session()
