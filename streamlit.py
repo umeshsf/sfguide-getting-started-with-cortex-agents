@@ -1,6 +1,8 @@
 import streamlit as st
 import json
 import _snowflake
+import re
+import unicodedata
 from snowflake.snowpark.context import get_active_session
 
 session = get_active_session()
@@ -10,142 +12,6 @@ API_TIMEOUT = 50000  # in milliseconds
 
 CORTEX_SEARCH_SERVICES = "sales_intelligence.data.sales_conversation_search"
 SEMANTIC_MODELS = "@sales_intelligence.data.models/sales_metrics_model.yaml"
-
-# Custom CSS styling
-st.markdown("""
-<style>
-/* Unified Color Palette */
-:root {
-    --background-color: #FFFFFF;
-    --text-color: #222222;
-    --title-color: #1A1A1A;
-    --button-color: #1a56db;
-    --button-text: #FFFFFF;
-    --border-color: #CBD5E0;
-    --accent-color: #2C5282;
-}
-
-/* General App Styling */
-.stApp {
-    background-color: var(--background-color);
-    color: var(--text-color);
-}
-
-/* Title Styling */
-h1, .stTitle {
-    color: var(--title-color) !important;
-    font-size: 36px !important;
-    font-weight: 600 !important;
-    padding: 1.5rem 0;
-}
-
-/* Input Fields */
-textarea {
-    background-color: white !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: 4px !important;
-    padding: 16px !important;
-    font-size: 16px !important;
-    color: var(--text-color) !important;
-}
-
-textarea:focus {
-    border-color: var(--accent-color) !important;
-    box-shadow: 0 0 0 1px var(--accent-color) !important;
-}
-
-textarea::placeholder {
-    color: #666666 !important;
-}
-
-/* Success & Error Messages */
-.stException {
-    background-color: #FEE2E2 !important;
-    border: 1px solid #EF4444 !important;
-    padding: 16px !important;
-    border-radius: 4px !important;
-    margin: 16px 0 !important;
-    color: #991B1B !important;
-}
-
-div[data-testid="stAlert"], div[data-testid="stException"] {
-    background-color: #f8d7da !important;
-    color: #721c24 !important;
-    border: 1px solid #f5c6cb !important;
-    padding: 12px !important;
-    border-radius: 6px !important;
-    font-weight: bold !important;
-}
-
-div[data-testid="stAlertContentError"] {
-    color: #721c24 !important;
-}
-
-.stFormSubmitButton {
-    background-color: white !important;
-    padding: 10px;
-    border-radius: 8px;
-}
-
-button[data-testid="stBaseButton-secondaryFormSubmit"] {
-    background-color: #007bff !important;
-    color: white !important;
-    font-weight: bold !important;
-    border-radius: 5px !important;
-    padding: 8px 16px !important;
-    border: none !important;
-}
-
-/* Sidebar Buttons */
-.stSidebar button {
-    background-color: #1a56db !important;
-    color: white !important;
-    font-weight: 600 !important;
-    border: none !important;
-}
-
-/* Tooltips */
-.tooltip {
-    visibility: hidden;
-    opacity: 0;
-    background-color: white;
-    color: var(--text-color);
-    padding: 10px;
-    border-radius: 10px;
-    font-size: 14px;
-    line-height: 1.5;
-    width: max-content;
-    max-width: 300px;
-    position: absolute;
-    z-index: 1000;
-    bottom: calc(100% + 5px);
-    left: 50%;
-    transform: translateX(-50%);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.citation:hover + .tooltip {
-    visibility: visible;
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-}
-
-/* Hide Streamlit Branding */
-#MainMenu, header, footer {
-    visibility: hidden;
-}
-
-[data-testid="stDownloadButton"] button {
-    background-color: #2196F3 !important;
-    color: #FFFFFF !important;
-    font-weight: 600 !important;
-    border: none !important;
-    padding: 0.5rem 1rem !important;
-    border-radius: 0.375rem !important;
-    box-shadow: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 def run_snowflake_query(query):
     try:
@@ -190,7 +56,8 @@ def snowflake_api_call(query: str, limit: int = 10):
             "analyst1": {"semantic_model_file": SEMANTIC_MODELS},
             "search1": {
                 "name": CORTEX_SEARCH_SERVICES,
-                "max_results": limit
+                "max_results": limit,
+                "id_column": "conversation_id"
             }
         }
     }
@@ -224,10 +91,11 @@ def process_sse_response(response):
     """Process SSE response"""
     text = ""
     sql = ""
-    
+    citations = []
+
     if not response:
-        return text, sql
-        
+        return text, sql, citation
+    
     try:
         for event in response:
             if event.get('event') == "message.delta":
@@ -244,7 +112,7 @@ def process_sse_response(response):
                                     text += result.get('json', {}).get('text', '')
                                     search_results = result.get('json', {}).get('searchResults', [])
                                     for search_result in search_results:
-                                        text += f"\n• {search_result.get('text', '')}"
+                                        citations.append({'source_id':search_result.get('source_id',''), 'doc_id':search_result.get('doc_id', '')})
                                     sql = result.get('json', {}).get('sql', '')
                     if content_type == 'text':
                         text += content_item.get('text', '')
@@ -255,7 +123,7 @@ def process_sse_response(response):
     except Exception as e:
         st.error(f"Error processing events: {str(e)}")
         
-    return text, sql
+    return text, sql, citations
 
 def main():
     st.title("Intelligent Sales Assistant")
@@ -272,7 +140,7 @@ def main():
 
     for message in st.session_state.messages:
         with st.chat_message(message['role']):
-            st.markdown(message['content'].replace("•", "\n\n-"))
+            st.markdown(message['content'].replace("•", "\n\n"))
 
     if query := st.chat_input("Would you like to learn?"):
         # Add user message to chat
@@ -283,13 +151,31 @@ def main():
         # Get response from API
         with st.spinner("Processing your request..."):
             response = snowflake_api_call(query, 1)
-            text, sql = process_sse_response(response)
+            text, sql, citations = process_sse_response(response)
             
             # Add assistant response to chat
             if text:
+                text = text.replace("【†", "[")
+                text = text.replace("†】", "]")
                 st.session_state.messages.append({"role": "assistant", "content": text})
+                
                 with st.chat_message("assistant"):
-                    st.markdown(text.replace("•", "\n\n-"))
+                    st.markdown(text.replace("•", "\n\n"))
+                    if citations:
+                        st.write("Citations:")
+                        for citation in citations:
+                            doc_id = citation.get("doc_id", "")
+                            if doc_id:
+                                query = f"SELECT transcript_text FROM sales_conversations WHERE conversation_id = '{doc_id}'"
+                                result = run_snowflake_query(query)
+                                result_df = result.to_pandas()
+                                if not result_df.empty:
+                                    transcript_text = result_df.iloc[0, 0]
+                                else:
+                                    transcript_text = "No transcript available"
+                    
+                            with st.expander(f"[{citation.get('source_id', '')}]"):
+                                st.write(transcript_text)
 
             # Display SQL if present
             if sql:
