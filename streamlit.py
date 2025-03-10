@@ -70,13 +70,17 @@ def snowflake_api_call(query: str, limit: int = 10):
             None,  # request_guid
             API_TIMEOUT,  # timeout in milliseconds,
         )
+        
+        if resp["status"] != 200:
+            st.error(f"❌ HTTP Error: {resp['status']} - {resp.get('reason', 'Unknown reason')}")
+            st.error(f"Response details: {resp}")
+            return None
+        
         try:
             response_content = json.loads(resp["content"])
         except json.JSONDecodeError:
             st.error("❌ Failed to parse API response. The server may have returned an invalid JSON format.")
-
-            if resp["status"] != 200:
-                st.error(f"Error:{resp} ") # instead of st.error(f"Error:{resp['status']} ")
+            st.error(f"Raw response: {resp['content'][:200]}...")
             return None
             
         return response_content
@@ -90,10 +94,11 @@ def process_sse_response(response):
     text = ""
     sql = ""
     citations = []
-
-    if not response:
-        return text, sql, citation
     
+    if not response:
+        return text, sql, citations
+    if isinstance(response, str):
+        return text, sql, citations
     try:
         for event in response:
             if event.get('event') == "message.delta":
@@ -172,8 +177,8 @@ def main():
                                 else:
                                     transcript_text = "No transcript available"
                     
-                            with st.expander(f"[{citation.get('source_id', '')}]"):
-                                st.write(transcript_text)
+                                with st.expander(f"[{citation.get('source_id', '')}]"):
+                                    st.write(transcript_text)
 
             # Display SQL if present
             if sql:
