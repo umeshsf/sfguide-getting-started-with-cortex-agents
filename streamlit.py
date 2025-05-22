@@ -24,7 +24,7 @@ def run_snowflake_query(query):
 def snowflake_api_call(query: str, limit: int = 10):
     
     payload = {
-        "model": "llama3.1-70b",
+        "model": "claude-4-sonnet",
         "messages": [
             {
                 "role": "user",
