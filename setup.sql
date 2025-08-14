@@ -1,7 +1,25 @@
+use role accountadmin;
+
 -- Create database and schema
 CREATE OR REPLACE DATABASE sales_intelligence;
 CREATE OR REPLACE SCHEMA sales_intelligence.data;
-CREATE OR REPLACE WAREHOUSE sales_intelligence_wh;
+CREATE OR REPLACE ROLE sales_intelligence_rl; -- role creation
+CREATE SCHEMA IF NOT EXISTS sales_intelligence.agents; -- agent schema creation
+GRANT USAGE ON SCHEMA sales_intelligence.agents TO ROLE SALES_INTELLIGENCE_RL;
+GRANT USAGE ON SCHEMA sales_intelligence.data TO ROLE SALES_INTELLIGENCE_RL;
+GRANT USAGE ON SCHEMA agents TO ROLE SALES_INTELLIGENCE_RL;
+
+CREATE OR REPLACE WAREHOUSE sales_intelligence_wh
+WITH 
+    WAREHOUSE_SIZE = 'SMALL'
+    AUTO_SUSPEND = 3600
+    AUTO_RESUME = TRUE
+    INITIALLY_SUSPENDED = FALSE
+    MIN_CLUSTER_COUNT = 1
+    MAX_CLUSTER_COUNT = 1
+    SCALING_POLICY = 'STANDARD'
+COMMENT = 'Sales intelligence warehouse with 1-hour auto-suspend policy'; -- warehouse creation
+
 
 USE DATABASE sales_intelligence;
 USE SCHEMA data;
@@ -81,6 +99,10 @@ VALUES
 
 ('DEAL010', 'UpgradeNow Corp', 65000, '2024-02-18', 'Pending', false, 'Rachel Torres', 'Analytics Pro');
 
+select * from sales_conversations;
+
+select * from sales_metrics;
+
 -- Enable change tracking
 ALTER TABLE sales_conversations SET CHANGE_TRACKING = TRUE;
 
@@ -88,7 +110,7 @@ ALTER TABLE sales_conversations SET CHANGE_TRACKING = TRUE;
 CREATE OR REPLACE CORTEX SEARCH SERVICE sales_conversation_search
   ON transcript_text
   ATTRIBUTES customer_name, deal_stage, sales_rep, product_line, conversation_date, deal_value
-  WAREHOUSE = sales_intelligence_wh
+  WAREHOUSE = sales_intelligence_wh -- change this from sales_intelligence_wh to an existing one that is created for trial accounts
   TARGET_LAG = '1 minute'
   AS (
     SELECT
@@ -104,5 +126,35 @@ CREATE OR REPLACE CORTEX SEARCH SERVICE sales_conversation_search
     WHERE conversation_date >= '2024-01-01'  -- Fixed date instead of CURRENT_TIMESTAMP
 );
 
+--Create Stage
 CREATE OR REPLACE STAGE models 
     DIRECTORY = (ENABLE = TRUE);
+
+--Appropriate Grants
+GRANT READ ON STAGE models TO ROLE sales_intelligence_rl;
+
+GRANT WRITE ON STAGE models TO ROLE sales_intelligence_rl;
+
+GRANT USAGE ON CORTEX SEARCH SERVICE sales_conversation_search TO ROLE SALES_INTELLIGENCE_RL;
+
+GRANT OWNERSHIP ON DATABASE SALES_INTELLIGENCE TO ROLE SALES_INTELLIGENCE_RL; 
+
+GRANT OPERATE ON WAREHOUSE sales_intelligence_wh TO ROLE SALES_INTELLIGENCE_RL WITH GRANT OPTION;
+
+GRANT CREATE AGENT ON SCHEMA snowflake_intelligence.agents TO ROLE sales_intelligence_rl; -- ability for role to create an agent
+
+GRANT ROLE sales_intelligence_rl to user <username>; -- assinging role to user
+
+GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE sales_intelligence_rl;
+
+GRANT ROLE cortex_user_role TO USER <username>;
+
+GRANT USAGE ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
+GRANT USAGE ON DATABASE sales_intelligence TO ROLE sales_intelligence_rl;
+GRANT USAGE ON WAREHOUSE sales_intelligence_wh TO ROLE sales_intelligence_rl;
+GRANT CREATE STREAMLIT ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
+GRANT CREATE STAGE ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
+GRANT SELECT ON ALL TABLES IN SCHEMA sales_intelligence.data to ROLE sales_intelligence_rl;
+
+ALTER USER <username> SET DEFAULT_ROLE=sales_intelligence_rl;
+
