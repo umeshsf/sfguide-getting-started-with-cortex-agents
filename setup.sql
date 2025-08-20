@@ -1,4 +1,5 @@
 use role accountadmin;
+SET my_user = CURRENT_USER();
 
 -- Create database and schema
 CREATE OR REPLACE DATABASE sales_intelligence;
@@ -141,13 +142,16 @@ GRANT OWNERSHIP ON DATABASE SALES_INTELLIGENCE TO ROLE SALES_INTELLIGENCE_RL;
 
 GRANT OPERATE ON WAREHOUSE sales_intelligence_wh TO ROLE SALES_INTELLIGENCE_RL WITH GRANT OPTION;
 
-GRANT CREATE AGENT ON SCHEMA snowflake_intelligence.agents TO ROLE sales_intelligence_rl; -- ability for role to create an agent
+GRANT CREATE AGENT ON SCHEMA SALES_INTELLIGENCE.agents TO ROLE sales_intelligence_rl; -- ability for role to create an agent
 
-GRANT ROLE sales_intelligence_rl to user <username>; -- assinging role to user
+GRANT ROLE sales_intelligence_rl to user IDENTIFIER($my_user); -- assinging role to user
 
 GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE sales_intelligence_rl;
 
-GRANT ROLE cortex_user_role TO USER <username>;
+CREATE ROLE IF NOT EXISTS cortex_user_role;
+GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE cortex_user_role;
+
+GRANT ROLE cortex_user_role TO USER IDENTIFIER($my_user);
 
 GRANT USAGE ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
 GRANT USAGE ON DATABASE sales_intelligence TO ROLE sales_intelligence_rl;
@@ -156,5 +160,4 @@ GRANT CREATE STREAMLIT ON SCHEMA sales_intelligence.data TO ROLE sales_intellige
 GRANT CREATE STAGE ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
 GRANT SELECT ON ALL TABLES IN SCHEMA sales_intelligence.data to ROLE sales_intelligence_rl;
 
-ALTER USER <username> SET DEFAULT_ROLE=sales_intelligence_rl;
-
+ALTER USER IDENTIFIER($my_user) SET DEFAULT_ROLE=sales_intelligence_rl;
