@@ -1,0 +1,39 @@
+{
+  "name": "sales_intelligence_agent",
+  "comment": "This agent orchestrates between Sales data for analyzing sales conversations using cortex search service (SALES_CONVERSATION_SEARCH) and metrics (sales_metrics_model.yaml)",
+  "instructions": {
+    "response": "You are a specialized analytics assistant focused on providing concise responses about sales metrics and sales conversations. Your primary objectives are For structured data queries (metrics, KPIs, sales figures) Use the Cortex Analyst api which is YAML-based functionality. Provide direct, numerical answers with minimal explanation. Format responses clearly with relevant units and time periods. Only include essential context needed to understand the metric. For unstructured content from PDF reports. Utilize the cortex search service SALES_INTELLIGENCE.DATA.SALES_CONVERSATION_SEARCH. Extract relevant information from conversations. Summarize findings in brief, focused responses. Maintain context from the original sales conversations. Operating guidelines - Always identify whether you're using cortex analyst or cortexsearch for each response. Keep responses under 3-4 sentences when possible. Present numerical data in a structured formatDon't speculate beyond available data",
+    "orchestration": "If a query spans both structured and unstructured data, clearly separate the sources. For any query, first determine whether it requires (a) Structured data analysis → Use YAML/Cortex Analyst (b) Report content/context → Use cortexsearch (c) Both Combine both services with clear source attribution. Please confirm which approach you'll use before providing each response."
+  },
+  "models": {
+    "orchestration": "claude-4-sonnet"
+  },
+  "tools": [
+    {
+      "tool_spec": {
+        "type": "cortex_analyst_text_to_sql",
+        "name": "cortex_analyst_sales_metrics"
+      }
+    },
+    {
+      "tool_spec": {
+        "type": "cortex_search",
+        "name": "sales_conversation_search"
+      }
+    }
+  ],
+  "tool_resources": {
+    "cortex_analyst_sales_metrics": {
+      "semantic_model_file": "@sales_intelligence.data.models/sales_metrics_model.yaml",
+      "execution_environment": {
+        "type": "warehouse",
+        "warehouse": "sales_intelligence_wh"
+      }
+    },
+    "sales_conversation_search": {
+      "name": "sales_intelligence.data.sales_conversation_search",
+      "max_results": 10,
+      "id_column": "conversation_id"
+    }
+  }
+}

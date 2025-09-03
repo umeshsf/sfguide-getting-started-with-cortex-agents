@@ -1,14 +1,21 @@
-use role accountadmin;
+-- 1. Create consumer role
+USE ROLE ACCOUNTADMIN;
+CREATE OR REPLACE ROLE sales_intelligence_rl;
+GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE sales_intelligence_rl;
 SET my_user = CURRENT_USER();
+GRANT ROLE SALES_INTELLIGENCE_RL to user IDENTIFIER($my_user);
 
--- Create database and schema
+-- 2. Create database, schema, and warehouse
 CREATE OR REPLACE DATABASE sales_intelligence;
 CREATE OR REPLACE SCHEMA sales_intelligence.data;
-CREATE OR REPLACE ROLE sales_intelligence_rl; -- role creation
-CREATE SCHEMA IF NOT EXISTS sales_intelligence.agents; -- agent schema creation
-GRANT USAGE ON SCHEMA sales_intelligence.agents TO ROLE SALES_INTELLIGENCE_RL;
-GRANT USAGE ON SCHEMA sales_intelligence.data TO ROLE SALES_INTELLIGENCE_RL;
-GRANT USAGE ON SCHEMA agents TO ROLE SALES_INTELLIGENCE_RL;
+GRANT USAGE ON DATABASE sales_intelligence TO ROLE sales_intelligence_rl;
+GRANT USAGE ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
+
+CREATE DATABASE IF NOT EXISTS snowflake_intelligence;
+CREATE SCHEMA IF NOT EXISTS snowflake_intelligence.agents;
+GRANT USAGE ON DATABASE snowflake_intelligence TO ROLE sales_intelligence_rl;
+GRANT USAGE ON SCHEMA snowflake_intelligence.agents TO ROLE sales_intelligence_rl;
+GRANT CREATE AGENT ON SCHEMA snowflake_intelligence.agents TO ROLE sales_intelligence_rl;
 
 CREATE OR REPLACE WAREHOUSE sales_intelligence_wh
 WITH 
@@ -16,16 +23,13 @@ WITH
     AUTO_SUSPEND = 3600
     AUTO_RESUME = TRUE
     INITIALLY_SUSPENDED = FALSE
-    MIN_CLUSTER_COUNT = 1
-    MAX_CLUSTER_COUNT = 1
-    SCALING_POLICY = 'STANDARD'
-COMMENT = 'Sales intelligence warehouse with 1-hour auto-suspend policy'; -- warehouse creation
+COMMENT = 'Sales intelligence warehouse with 1-hour auto-suspend policy';
+GRANT USAGE, OPERATE ON WAREHOUSE sales_intelligence_wh TO ROLE sales_intelligence_rl;
 
-
+-- 3. Create tables for sales data
 USE DATABASE sales_intelligence;
 USE SCHEMA data;
 
--- Create tables for sales data
 CREATE TABLE sales_conversations (
     conversation_id VARCHAR,
     transcript_text TEXT,
@@ -36,6 +40,7 @@ CREATE TABLE sales_conversations (
     deal_value FLOAT,
     product_line VARCHAR
 );
+GRANT SELECT ON TABLE sales_conversations TO ROLE sales_intelligence_rl;
 
 CREATE TABLE sales_metrics (
     deal_id VARCHAR,
@@ -47,8 +52,8 @@ CREATE TABLE sales_metrics (
     sales_rep VARCHAR,
     product_line VARCHAR
 );
+GRANT SELECT ON TABLE sales_metrics TO ROLE sales_intelligence_rl;
 
--- First, let's insert data into sales_conversations
 INSERT INTO sales_conversations 
 (conversation_id, transcript_text, customer_name, deal_stage, sales_rep, conversation_date, deal_value, product_line)
 VALUES
@@ -76,8 +81,7 @@ The client requested a detailed ROI analysis focusing on time saved in daily ope
 
 ('CONV010', 'Quarterly strategic review with UpgradeNow Corp''s Department Heads and Analytics team. Current implementation meeting basic needs but team requiring more sophisticated analytics capabilities. Deep dive into current usage patterns revealed opportunities for workflow optimization and advanced reporting needs. Users expressed strong satisfaction with platform stability and basic features, but requiring enhanced data visualization and predictive analytics capabilities. Analytics team presented specific requirements: custom dashboard creation, advanced data modeling tools, and integrated BI features. Discussion about upgrade path from current package to Analytics Pro tier. ROI analysis presented showing potential 60% improvement in reporting efficiency. Team to present upgrade proposal to executive committee next month.', 'UpgradeNow Corp', 'Expansion', 'Rachel Torres', '2024-01-24 11:45:00', 65000, 'Analytics Pro');
 
--- Now, let's insert corresponding data into sales_metrics
-INSERT INTO sales_metrics 
+INSERT INTO sales_metrics
 (deal_id, customer_name, deal_value, close_date, sales_stage, win_status, sales_rep, product_line)
 VALUES
 ('DEAL001', 'TechCorp Inc', 75000, '2024-02-15', 'Closed', true, 'Sarah Johnson', 'Enterprise Suite'),
@@ -100,19 +104,14 @@ VALUES
 
 ('DEAL010', 'UpgradeNow Corp', 65000, '2024-02-18', 'Pending', false, 'Rachel Torres', 'Analytics Pro');
 
-select * from sales_conversations;
-
-select * from sales_metrics;
-
--- Enable change tracking
 ALTER TABLE sales_conversations SET CHANGE_TRACKING = TRUE;
 
--- Create the search service
+-- 4. Create the search service
 CREATE OR REPLACE CORTEX SEARCH SERVICE sales_conversation_search
   ON transcript_text
   ATTRIBUTES customer_name, deal_stage, sales_rep, product_line, conversation_date, deal_value
-  WAREHOUSE = sales_intelligence_wh -- change this from sales_intelligence_wh to an existing one that is created for trial accounts
-  TARGET_LAG = '1 minute'
+  WAREHOUSE = sales_intelligence_wh
+  TARGET_LAG = '1 hour'
   AS (
     SELECT
         conversation_id,
@@ -124,47 +123,12 @@ CREATE OR REPLACE CORTEX SEARCH SERVICE sales_conversation_search
         deal_value,
         product_line
     FROM sales_conversations
-    WHERE conversation_date >= '2024-01-01'  -- Fixed date instead of CURRENT_TIMESTAMP
 );
+GRANT USAGE ON CORTEX SEARCH SERVICE sales_conversation_search TO ROLE sales_intelligence_rl;
 
---Create Stage
-CREATE OR REPLACE STAGE models 
-    DIRECTORY = (ENABLE = TRUE);
-
---Appropriate Grants
+-- 5. Create Stage
+CREATE OR REPLACE STAGE models DIRECTORY = (ENABLE = TRUE);
 GRANT READ ON STAGE models TO ROLE sales_intelligence_rl;
 
-GRANT WRITE ON STAGE models TO ROLE sales_intelligence_rl;
-
-GRANT USAGE ON CORTEX SEARCH SERVICE sales_conversation_search TO ROLE SALES_INTELLIGENCE_RL;
-
-GRANT OWNERSHIP ON DATABASE SALES_INTELLIGENCE TO ROLE SALES_INTELLIGENCE_RL; 
-
-GRANT OPERATE ON WAREHOUSE sales_intelligence_wh TO ROLE SALES_INTELLIGENCE_RL WITH GRANT OPTION;
-
-CREATE DATABASE IF NOT EXISTS SNOWFLAKE_INTELLIGENCE;
-
-CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_INTELLIGENCE.AGENTS;
-
-GRANT CREATE AGENT ON SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS TO ROLE SALES_INTELLIGENCE_RL;
-
-GRANT CREATE AGENT ON SCHEMA SALES_INTELLIGENCE.AGENTS TO ROLE SALES_INTELLIGENCE_RL;-- ability for role to create an agent
-
-GRANT ROLE SALES_INTELLIGENCE_RL to user IDENTIFIER($my_user); -- assinging role to user
-
-GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE SALES_INTELLIGENCE_RL;
-
-CREATE ROLE IF NOT EXISTS cortex_user_role;
-GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE cortex_user_role;
-
-GRANT ROLE cortex_user_role TO USER IDENTIFIER($my_user);
-
-GRANT USAGE ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
-GRANT USAGE ON DATABASE sales_intelligence TO ROLE sales_intelligence_rl;
-GRANT USAGE ON WAREHOUSE sales_intelligence_wh TO ROLE sales_intelligence_rl;
-GRANT CREATE STREAMLIT ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
-GRANT CREATE STAGE ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
-GRANT SELECT ON ALL TABLES IN SCHEMA sales_intelligence.data to ROLE sales_intelligence_rl;
-
-ALTER USER IDENTIFIER($my_user) SET DEFAULT_ROLE=sales_intelligence_rl;
-Use Role sales_intelligence_rl;
+-- 6. Enable cross region inference (required to use claude-4-sonnet)
+ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'AWS_US';

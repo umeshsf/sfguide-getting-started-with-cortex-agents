@@ -1,0 +1,1306 @@
+# Generated file. DO NOT EDIT.
+openapi: 3.1.0
+info:
+  title: Cortex Agent REST API
+  description: OpenAPI 3.1 specification for the Cortex Agent REST API
+  version: 1.0.0
+  contact:
+    email: support@snowflake.com
+  license:
+    url: https://snowflake.com
+    name: Not licensed
+paths:
+  /api/v2/databases/{database}/schemas/{schema}/agents/{name}:run:
+    post:
+      x-sf-custom-impl: true
+      summary: Send a Cortex Data Agent Run Request.
+      description: |
+        Send a Cortex Data Agent Run Request to get results.
+      operationId: dataAgentRun
+      tags:
+        - cortex-data-agent
+      parameters:
+        - $ref: '#/components/parameters/database'
+        - $ref: '#/components/parameters/schema'
+        - $ref: '#/components/parameters/name'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataAgentRunRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/ServerSentEvent'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '403':
+          $ref: '#/components/responses/403Forbidden'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '405':
+          $ref: '#/components/responses/405MethodNotAllowed'
+        '408':
+          $ref: '#/components/responses/408RequestTimeout'
+        '409':
+          $ref: '#/components/responses/409Conflict'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+        '503':
+          $ref: '#/components/responses/503ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/504GatewayTimeout'
+  /api/v2/cortex/agent:run:
+    post:
+      summary: Send a Cortex Agent Run Request.
+      tags:
+        - cortex-lite-agent
+      description: Send a Cortex Agent Run Request to get results.
+      operationId: agentRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LiteAgentRunRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/ServerSentEvent'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '403':
+          $ref: '#/components/responses/403Forbidden'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '405':
+          $ref: '#/components/responses/405MethodNotAllowed'
+        '408':
+          $ref: '#/components/responses/408RequestTimeout'
+        '409':
+          $ref: '#/components/responses/409Conflict'
+        '500':
+          $ref: '#/components/responses/500InternalServerError'
+        '503':
+          $ref: '#/components/responses/503ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/504GatewayTimeout'
+components:
+  schemas:
+    ServerSentEvent:
+      oneOf:
+        - $ref: '#/components/schemas/ResponseEvent'
+        - $ref: '#/components/schemas/TextEvent'
+        - $ref: '#/components/schemas/TextDeltaEvent'
+        - $ref: '#/components/schemas/ResponseTextAnnotationEvent'
+        - $ref: '#/components/schemas/ThinkingEvent'
+        - $ref: '#/components/schemas/ThinkingDeltaEvent'
+        - $ref: '#/components/schemas/ToolUseEvent'
+        - $ref: '#/components/schemas/ToolResultEvent'
+        - $ref: '#/components/schemas/ToolResultStatusEvent'
+        - $ref: '#/components/schemas/AnalystToolResultDeltaEvent'
+        - $ref: '#/components/schemas/TableEvent'
+        - $ref: '#/components/schemas/ChartEvent'
+        - $ref: '#/components/schemas/StatusEvent'
+        - $ref: '#/components/schemas/SuggestedQueriesEvent'
+        - $ref: '#/components/schemas/ErrorEvent'
+      discriminator:
+        propertyName: event
+        mapping:
+          response: '#/components/schemas/ResponseEvent'
+          response.text: '#/components/schemas/TextEvent'
+          response.text.delta: '#/components/schemas/TextDeltaEvent'
+          response.text.annotation: '#/components/schemas/ResponseTextAnnotationEvent'
+          response.thinking: '#/components/schemas/ThinkingEvent'
+          response.thinking.delta: '#/components/schemas/ThinkingDeltaEvent'
+          response.tool_use: '#/components/schemas/ToolUseEvent'
+          response.tool_result: '#/components/schemas/ToolResultEvent'
+          response.tool_result.status: '#/components/schemas/ToolResultStatusEvent'
+          response.tool_result.analyst.delta: '#/components/schemas/AnalystToolResultDeltaEvent'
+          response.table: '#/components/schemas/TableEvent'
+          response.chart: '#/components/schemas/ChartEvent'
+          response.status: '#/components/schemas/StatusEvent'
+          response.suggested_queries: '#/components/schemas/SuggestedQueriesEvent'
+          error: '#/components/schemas/ErrorEvent'
+    Identifier:
+      type: string
+      description: A Snowflake object identifier. If the identifier contains spaces or special characters, the entire string must be enclosed in double quotes. Identifiers enclosed in double quotes are also case-sensitive.
+      pattern: ^"([^"]|"")+"|[a-zA-Z_][a-zA-Z0-9_$]*$
+      example: TEST_NAME
+      x-sf-sql-identifier: true
+    CortexSearchCitation:
+      type: object
+      required:
+        - index
+        - search_result_id
+        - doc_id
+        - doc_title
+        - text
+      properties:
+        index:
+          type: integer
+        search_result_id:
+          type: string
+        doc_id:
+          type: string
+        doc_title:
+          type: string
+        text:
+          type: string
+    WebSearchCitation:
+      type: object
+      required:
+        - start_index
+        - end_index
+        - source_url
+        - text
+      properties:
+        start_index:
+          type: integer
+        end_index:
+          type: integer
+        source_url:
+          type: string
+        text:
+          type: string
+    Annotation:
+      oneOf:
+        - $ref: '#/components/schemas/CortexSearchCitation'
+        - $ref: '#/components/schemas/WebSearchCitation'
+      discriminator:
+        propertyName: type
+        mapping:
+          cortex_search_citation: '#/components/schemas/CortexSearchCitation'
+          web_search_citation: '#/components/schemas/WebSearchCitation'
+    TextContent:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          description: A text result from the agent
+          type: string
+          example: The answer to your question is...
+        annotations:
+          description: Any annotations attached to the text result (e.g. citations)
+          type: array
+          items:
+            $ref: '#/components/schemas/Annotation'
+        is_elicitation:
+          description: Whether this text content is the agent asking for more information from the end user.
+          type: boolean
+    TextContentItem:
+      allOf:
+        - type: object
+          required:
+            - type
+          properties:
+            type:
+              type: string
+              const: text
+        - $ref: '#/components/schemas/TextContent'
+    ThinkingContent:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          description: Thinking tokens from the agent
+          type: string
+          example: To answer your question I must...
+    ThinkingContentItem:
+      type: object
+      required:
+        - type
+        - thinking
+      properties:
+        type:
+          type: string
+          const: thinking
+        thinking:
+          $ref: '#/components/schemas/ThinkingContent'
+    ToolUse:
+      type: object
+      required:
+        - tool_use_id
+        - type
+        - name
+        - input
+      properties:
+        tool_use_id:
+          type: string
+          description: Unique identifier for this tool use. Can be used to associated tool results.
+          example: toolu_123
+        type:
+          type: string
+          description: The type of the tool (e.g. cortex_search, cortex_analyst_text2sql)
+          example: cortex_analyst_text2sql
+        name:
+          type: string
+          description: The unique identifier for this tool instance
+          example: my_cortex_analyst_semantic_view
+        input:
+          type: object
+          description: The structured input for this tool. The schema of this object should will vary depending on the tool spec.
+          additionalProperties: true
+    ToolUseContentItem:
+      type: object
+      required:
+        - type
+        - tool_use
+      properties:
+        type:
+          type: string
+          const: tool_use
+        tool_use:
+          $ref: '#/components/schemas/ToolUse'
+    ToolResultContentText:
+      type: object
+      required:
+        - type
+        - text
+      properties:
+        type:
+          type: string
+          const: text
+        text:
+          type: string
+    ToolResultContentJSON:
+      type: object
+      required:
+        - type
+        - json
+      properties:
+        type:
+          type: string
+          const: json
+        json:
+          description: Structured output from a tool. The schema varies depending on the tool type.
+          type: object
+    ToolResultContent:
+      oneOf:
+        - $ref: '#/components/schemas/ToolResultContentText'
+        - $ref: '#/components/schemas/ToolResultContentJSON'
+      discriminator:
+        propertyName: type
+        mapping:
+          text: '#/components/schemas/ToolResultContentText'
+          json: '#/components/schemas/ToolResultContentJSON'
+    ToolResult:
+      type: object
+      required:
+        - tool_use_id
+        - type
+        - name
+        - content
+        - status
+      properties:
+        tool_use_id:
+          type: string
+          description: Unique identifier for this tool use. Can be used to associated tool results.
+          example: toolu_123
+        type:
+          type: string
+          description: The type of the tool (e.g. cortex_search, cortex_analyst_text2sql)
+          example: cortex_analyst_text2sql
+        name:
+          type: string
+          description: The unique identifier for this tool instance
+          example: my_cortex_analyst_semantic_view
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolResultContent'
+        status:
+          type: string
+          description: The status of tool execution
+          example: success
+    ToolResultContentItem:
+      type: object
+      required:
+        - type
+        - tool_result
+      properties:
+        type:
+          type: string
+          const: tool_result
+        tool_result:
+          $ref: '#/components/schemas/ToolResult'
+    RowType:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        length:
+          type: integer
+        precision:
+          type: integer
+        scale:
+          type: integer
+        nullable:
+          type: boolean
+      required:
+        - name
+        - type
+        - length
+        - precision
+        - scale
+        - nullable
+    ResultSetMetaData:
+      type: object
+      properties:
+        partition:
+          type: integer
+        numRows:
+          type: integer
+        format:
+          type: string
+        rowType:
+          type: array
+          items:
+            $ref: '#/components/schemas/RowType'
+      required:
+        - partition
+        - numRows
+        - format
+        - rowType
+    ResultSet:
+      type: object
+      required:
+        - statementHandle
+        - resultSetMetaData
+        - data
+      properties:
+        statementHandle:
+          type: string
+        resultSetMetaData:
+          $ref: '#/components/schemas/ResultSetMetaData'
+        data:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+    TableContent:
+      type: object
+      required:
+        - tool_use_id
+        - query_id
+      properties:
+        tool_use_id:
+          description: The ID of the tool use that generated this table
+          type: string
+          example: toolu_123
+        query_id:
+          description: The query id of the sql query that generated this data
+          type: string
+          example: 6ac75378-6337-48a6-80ab-6de48dd680eb
+        result_set:
+          $ref: '#/components/schemas/ResultSet'
+        title:
+          description: The title for this table
+          type: string
+    TableContentItem:
+      type: object
+      required:
+        - type
+        - table
+      properties:
+        type:
+          type: string
+          const: table
+        table:
+          $ref: '#/components/schemas/TableContent'
+    ChartContent:
+      type: object
+      required:
+        - chart_spec
+        - tool_use_id
+      properties:
+        tool_use_id:
+          description: The ID of the tool use that generated this chart
+          type: string
+          example: toolu_123
+        chart_spec:
+          description: The vega-lite chart specification serialized as a string
+          type: string
+        analyst_tool_use_id:
+          description: The tool use id of the Cortex Analyst tool call that generated the data for this chart. This is deprecated. Clients should use `tool_use_id` to fetch the chart tool use and from there find the Analyst tool use id if needed.
+          type: string
+          deprecated: true
+    ChartContentItem:
+      type: object
+      required:
+        - type
+        - chart
+      properties:
+        type:
+          type: string
+          const: chart
+        chart:
+          $ref: '#/components/schemas/ChartContent'
+    SuggestedQuery:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+    SuggestedQueriesContent:
+      type: object
+      required:
+        - suggested_queries
+      properties:
+        suggested_queries:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestedQuery'
+    SuggestedQueriesContentItem:
+      allOf:
+        - type: object
+          required:
+            - type
+          properties:
+            type:
+              type: string
+              const: suggested_queries
+        - $ref: '#/components/schemas/SuggestedQueriesContent'
+    MessageContentItem:
+      oneOf:
+        - $ref: '#/components/schemas/TextContentItem'
+        - $ref: '#/components/schemas/ThinkingContentItem'
+        - $ref: '#/components/schemas/ToolUseContentItem'
+        - $ref: '#/components/schemas/ToolResultContentItem'
+        - $ref: '#/components/schemas/TableContentItem'
+        - $ref: '#/components/schemas/ChartContentItem'
+        - $ref: '#/components/schemas/SuggestedQueriesContentItem'
+      discriminator:
+        propertyName: type
+        mapping:
+          text: '#/components/schemas/TextContentItem'
+          thinking: '#/components/schemas/ThinkingContentItem'
+          tool_use: '#/components/schemas/ToolUseContentItem'
+          tool_result: '#/components/schemas/ToolResultContentItem'
+          table: '#/components/schemas/TableContentItem'
+          chart: '#/components/schemas/ChartContentItem'
+          suggested_queries: '#/components/schemas/SuggestedQueriesContentItem'
+    Message:
+      type: object
+      description: |
+        Represents a single message in the conversation.
+        Can be either from the user or the assistant.
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+          description: |
+            Identifies who sent the message - either the user or the assistant.
+            User messages typically contain queries, while assistant messages contain responses and tool results.
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageContentItem'
+          description: |
+            Array of content elements making up the message.
+            Can include text, tool results, or custom content types.
+        schema_version:
+          type: string
+    ToolChoice:
+      type: object
+      nullable: true
+      description: |
+        Configures how tools should be selected and used during the interaction.
+        Controls whether tool use is automatic, required, or specific tools should be used.
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: |
+            Determines how tools are selected:
+            * auto - Automatic tool selection (default)
+            * required - Must use at least one tool
+            * tool - Use specific named tools
+          example: required
+        name:
+          type: array
+          description: List of specific tool names to use when type is 'tool'
+          example:
+            - Analyst1
+            - Search1
+          items:
+            type: string
+    DataAgentRunRequest:
+      type: object
+      description: |
+        The request object for running the Data Cortex agent.
+      required:
+        - messages
+      properties:
+        thread_id:
+          type: integer
+          format: int64
+          description: |
+            The id of the thread.
+        parent_message_id:
+          type: integer
+          format: int64
+          description: |
+            The id of the message from which this run should begin.
+        messages:
+          type: array
+          description: |
+            If thread id and parent message id are present, the current user messages in this conversation turn.
+            Else, the conversation history and current message. Contains both user queries and assistant responses in chronological order.
+          items:
+            $ref: '#/components/schemas/Message'
+          minItems: 1
+        execution_trace:
+          type: object
+          description: |
+            Configuration for execution tracing.
+          required:
+            - enabled
+          properties:
+            enabled:
+              type: boolean
+              description: |
+                Whether execution tracing is enabled.
+          additionalProperties: true
+        tool_choice:
+          $ref: '#/components/schemas/ToolChoice'
+        experimental:
+          description: reserved
+          type: object
+    ResponseEventData:
+      type: object
+      properties:
+        role:
+          type: string
+          constant: assistant
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageContentItem'
+    ResponseEvent:
+      description: Event sent when the final response is available. This is the last event emitted, and includes the aggregation of all other events previously streamed.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response
+        data:
+          $ref: '#/components/schemas/ResponseEventData'
+    ContentItemEvent:
+      type: object
+      required:
+        - content_index
+      properties:
+        content_index:
+          description: The index in the response content array this event represents
+          type: integer
+          example: 0
+    TextEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/TextContent'
+    TextEvent:
+      description: An event sent when a text content block is done streaming, including all the aggregated deltas for a particular content index.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.text
+        data:
+          $ref: '#/components/schemas/TextEventData'
+    TextDeltaContentItem:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          description: The text delta
+          type: string
+        is_elicitation:
+          description: Whether this text content is the agent asking for more information from the end user.
+          type: boolean
+    TextDeltaEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/TextDeltaContentItem'
+    TextDeltaEvent:
+      description: Event sent when a new output text delta is generated.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.text.delta
+        data:
+          $ref: '#/components/schemas/TextDeltaEventData'
+    ResponseTextAnnotationEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - type: object
+          required:
+            - annotation_index
+            - annotation
+          properties:
+            annotation_index:
+              type: number
+            annotation:
+              $ref: '#/components/schemas/Annotation'
+    ResponseTextAnnotationEvent:
+      description: Event sent when an annotation is added to a text content.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.text.annotation
+        data:
+          $ref: '#/components/schemas/ResponseTextAnnotationEventData'
+    ThinkingEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/ThinkingContent'
+    ThinkingEvent:
+      description: An event sent when a thinking content block is done streaming, including all the aggregated deltas for a particular content index.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.thinking
+        data:
+          $ref: '#/components/schemas/ThinkingEventData'
+    ThinkingDeltaContentItem:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          description: The thinking token
+          type: string
+    ThinkingDeltaEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/ThinkingDeltaContentItem'
+    ThinkingDeltaEvent:
+      description: Event sent when a thinking delta is generated.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.thinking.delta
+        data:
+          $ref: '#/components/schemas/ThinkingDeltaEventData'
+    ToolUseEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/ToolUse'
+    ToolUseEvent:
+      description: An event sent when the agent requests a tool use.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.tool_use
+        data:
+          $ref: '#/components/schemas/ToolUseEventData'
+    ToolResultEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/ToolResult'
+    ToolResultEvent:
+      description: Event sent when a tool finishes executing, including the tool result.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.tool_result
+        data:
+          $ref: '#/components/schemas/ToolResultEventData'
+    ToolResultStatusEventData:
+      type: object
+      required:
+        - tool_use_id
+        - tool_type
+        - status
+      properties:
+        tool_use_id:
+          type: string
+          description: Unique identifier for this tool use.
+          example: toolu_123
+        tool_type:
+          type: string
+          description: The type of the tool (e.g. cortex_search, cortex_analyst_text2sql)
+          example: cortex_analyst_text2sql
+        status:
+          type: string
+          description: Enum for the current state.
+          example: Executing SQL
+        message:
+          type: string
+          description: A more descriptive message expanding on the current status.
+          example: Executing query 'SELECT * FROM my_table'
+    ToolResultStatusEvent:
+      description: Status update for a specific tool use.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.tool_result.status
+        data:
+          $ref: '#/components/schemas/ToolResultStatusEventData'
+    CortexAnalystSuggestionDelta:
+      type: object
+      required:
+        - index
+        - delta
+      properties:
+        index:
+          description: The index of the suggestion array this delta represents
+          type: integer
+        delta:
+          description: The text delta for the suggestion in this index
+          type: string
+    CortexAnalystToolResultDelta:
+      type: object
+      properties:
+        text:
+          description: A text delta from Cortex Analyst's final response.
+          type: string
+        think:
+          description: A text delta from Cortex Analyst's reasoning steps.
+          type: string
+        sql:
+          description: A delta from Cortex Analyst's SQL output. Currently, the entire SQL query comes in a single event but we may stream the SQL token-by-token in the future.
+          type: string
+        sql_explanation:
+          description: A delta from Cortex Analyst's explanation of what the SQL query does
+          type: string
+        query_id:
+          description: The query id once SQL execution begins
+          type: string
+        verified_query_used:
+          description: Whether a verified query was used to generate this response
+          type: boolean
+        result_set:
+          description: The results from SQL execution. Matches the schema from Snowflake's SQL API ResultSet (https://docs.snowflake.com/en/developer-guide/sql-api/reference)
+          $ref: '#/components/schemas/ResultSet'
+        suggestions:
+          description: A delta from Cortex Analyst's suggested questions. This is sent when Analyst cannot answer the question due to missing information or other failures.
+          $ref: '#/components/schemas/CortexAnalystSuggestionDelta'
+    AnalystToolResultDeltaContentItem:
+      type: object
+      required:
+        - tool_use_id
+        - tool_type
+        - tool_name
+        - delta
+      properties:
+        tool_use_id:
+          type: string
+          description: Unique identifier for this tool use. Can be used to associated tool results.
+          example: toolu_123
+        tool_type:
+          type: string
+          description: The type of the tool (always cortex_analyst_text2sql for this event)
+          example: cortex_analyst_text2sql
+        tool_name:
+          type: string
+          description: The unique identifier for this tool instance
+          example: my_cortex_analyst_semantic_view
+        delta:
+          $ref: '#/components/schemas/CortexAnalystToolResultDelta'
+    AnalystToolResultDeltaEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/AnalystToolResultDeltaContentItem'
+    AnalystToolResultDeltaEvent:
+      description: An delta event sent for the Cortex Analyst tool execution
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.tool_result.analyst.delta
+        data:
+          $ref: '#/components/schemas/AnalystToolResultDeltaEventData'
+    TableEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/TableContent'
+    TableEvent:
+      description: An event sent when a table content block is added.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.table
+        data:
+          $ref: '#/components/schemas/TableEventData'
+    ChartEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/ChartContent'
+    ChartEvent:
+      description: An event sent when a chart content block is added.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.chart
+        data:
+          $ref: '#/components/schemas/ChartEventData'
+    StatusEventData:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Enum for the current state.
+          example: Executing tools
+        message:
+          type: string
+          description: A more descriptive message expanding on the current status.
+    StatusEvent:
+      description: Status update for the agent execution.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.status
+        data:
+          $ref: '#/components/schemas/StatusEventData'
+    SuggestedQueriesEventData:
+      allOf:
+        - $ref: '#/components/schemas/ContentItemEvent'
+        - $ref: '#/components/schemas/SuggestedQueriesContent'
+    SuggestedQueriesEvent:
+      description: An event sent when a suggested queries content block is added.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: response.suggested_queries
+        data:
+          $ref: '#/components/schemas/SuggestedQueriesEventData'
+    ErrorEventData:
+      type: object
+      properties:
+        code:
+          type: string
+          description: The Snowflake error code
+        message:
+          type: string
+          description: The error message
+        request_id:
+          type: string
+          description: The unique identifier for this request
+    ErrorEvent:
+      description: Sent when a fatal errors is encountered.
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          const: error
+        data:
+          $ref: '#/components/schemas/ErrorEventData'
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message returned by the server
+        code:
+          type: string
+          description: Error code.
+        error_code:
+          type: string
+          description: Error code, same as `code` above. This property has been deprecated and will be removed in a future release, but is temporarily supported for for short-term backward compatibility.
+        request_id:
+          type: string
+          description: Unique request ID.
+      example:
+        message: Compilation error!
+        error_code: '390189'
+        request_id: 01afef9d-0607-0550-0001-dd270c3902d7
+    Tool:
+      type: object
+      description: |
+        Defines a tool that can be used by the agent.
+        Tools provide specific capabilities like data analysis, search, or generic functions.
+      required:
+        - tool_spec
+      properties:
+        tool_spec:
+          type: object
+          description: Specification of the tool's type, configuration, and input requirements
+          required:
+            - type
+            - name
+          properties:
+            type:
+              type: string
+              description: |
+                The type of tool capability. Can be specialized types like
+                'cortex_analyst_text_to_sql' or 'generic' for general-purpose tools.
+              example: generic
+            name:
+              type: string
+              description: |
+                Unique identifier for referencing this tool instance.
+                Used to match with configuration in tool_resources.
+              example: get_weather
+            description:
+              type: string
+              description: Description of the tool to be considered for tool use
+            input_schema:
+              type: object
+              description: |
+                JSON Schema definition of the expected input parameters for this tool.
+                Required for generic tools to specify their input requirements.
+              properties:
+                type:
+                  type: string
+                  description: The type of the input schema object
+                  example: object
+                properties:
+                  type: object
+                  description: Definitions of each input parameter
+                required:
+                  type: array
+                  description: List of required input parameter names
+                  items:
+                    type: string
+              additionalProperties: true
+              example:
+                type: object
+                properties:
+                  location:
+                    type: string
+                    description: The city and state, e.g. San Francisco, CA
+                required:
+                  - location
+    AnalystResource:
+      type: object
+      description: |
+        Configuration for text-to-SQL analysis tool.
+        Provides parameters for SQL query generation and execution.
+      properties:
+        semantic_model_file:
+          type: string
+          description: |
+            The path to a file stored in a Snowflake Stage holding the semantic model yaml.
+          example: '@my_stage/my_semantic_model.yaml'
+        semantic_view:
+          type: string
+          description: The name of the Snowflake native semantic model object
+          example: db.schema.semantic_view
+      additionalProperties: true
+    SearchResource:
+      type: object
+      description: |
+        Configuration for search functionality.
+        Defines how document search and retrieval should be performed.
+      properties:
+        search_service:
+          type: string
+          description: |
+            The name of the search service.
+            Must in format: database.schema.service_name
+        name:
+          description: reserved
+          type: string
+        max_results:
+          type: integer
+          description: |
+            The number of search results used in LLM prompt.
+        title_column:
+          type: string
+          description: |
+            The title column of the document.
+        id_column:
+          type: string
+          description: |
+            The ID column of the document.
+        filter:
+          type: object
+          description: |
+            Filter query for search results.
+        experimental:
+          description: reserved
+          type: object
+      additionalProperties: true
+    ToolResources:
+      type: object
+      description: |
+        Configuration for each tool referenced in the tools array.
+        Keys must match the name field of tools.
+      example:
+        Search1:
+          search_service: db.schema.service_name
+          filters:
+            field: value
+          max_results: 5
+      additionalProperties:
+        discriminator:
+          propertyName: type
+          mapping:
+            analyst: '#/components/schemas/AnalystResource'
+            search: '#/components/schemas/SearchResource'
+        additionalProperties: true
+    LiteAgentRunRequest:
+      type: object
+      description: |
+        The main request object for running the Cortex agent.
+        Contains all necessary information for processing a user query.
+      required:
+        - model
+        - messages
+      properties:
+        models:
+          type: object
+          description: LLM configuration for each step of the request (currently only `orchestration`).
+          properties:
+            orchestration:
+              type: string
+              description: Which LLM to use for orchestration. If left blank, the best LLM available to you will be selected
+              example: claude-4-sonnet
+        instructions:
+          type: object
+          description: Custom instructions to display to the Agent
+          properties:
+            response:
+              type: string
+              description: These custom instructions are displayed when the Agent generates the final response based on the tools executed.
+              example: You will respond in a friendly but concise manner
+            orchestration:
+              type: string
+              description: These custom instructions are displayed when the Agent is planning which tools to use
+              example: For any query related to revenue we should use Analyst; For all policy questions we should use Search
+            system:
+              type: string
+              description: Instructions always shown to the Agent
+              example: You are a friendly agent ...
+        messages:
+          type: array
+          description: |
+            The conversation history and current message.
+            Contains both user queries and assistant responses in chronological order.
+          items:
+            $ref: '#/components/schemas/Message'
+          minItems: 1
+        tools:
+          type: array
+          description: |
+            List of tools available for the agent to use.
+            Tools may have a corresponding configuration in tool_resources.
+          items:
+            $ref: '#/components/schemas/Tool'
+          example:
+            - tool_spec:
+                type: cortex_analyst_text_to_sql
+                name: Analyst1
+        tool_resources:
+          $ref: '#/components/schemas/ToolResources'
+        tool_choice:
+          $ref: '#/components/schemas/ToolChoice'
+        thread_id:
+          type: integer
+          format: int64
+          description: |
+            The id of the thread.
+        parent_message_id:
+          type: integer
+          format: int64
+          description: |
+            The id of the message from which this run should begin.
+        experimental:
+          description: reserved
+          type: object
+  parameters:
+    database:
+      name: database
+      description: Identifier (i.e. name) for the database to which the resource belongs. You can use the `/api/v2/databases` GET request to get a list of available databases.
+      required: true
+      in: path
+      schema:
+        example: TEST_DB
+        $ref: '#/components/schemas/Identifier'
+    schema:
+      name: schema
+      description: Identifier (i.e. name) for the schema to which the resource belongs. You can use the `/api/v2/databases/{database}/schemas` GET request to get a list of available schemas for the specified database.
+      required: true
+      in: path
+      schema:
+        example: TEST_SCHEMA
+        $ref: '#/components/schemas/Identifier'
+    name:
+      name: name
+      description: Identifier (i.e. name) for the resource.
+      required: true
+      in: path
+      schema:
+        example: TEST_NAME
+        $ref: '#/components/schemas/Identifier'
+  headers:
+    X-Snowflake-Request-ID:
+      description: Unique ID of the API request.
+      schema:
+        type: string
+        format: uuid
+  responses:
+    400BadRequest:
+      description: Bad Request. The request payload is invalid or malformed. This happens if the application didn't send the correct request payload. The response body may include the error code and message indicating the actual cause. The application must reconstruct the request body for retry.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    401Unauthorized:
+      description: Unauthorized. The request is not authorized. This happens if the attached access token is invalid or missing. The response body may include the error code and message indicating the actual cause, e.g., expired, invalid token. The application must obtain a new access token for retry.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    403Forbidden:
+      description: Forbidden. The request is forbidden. This can also happen if the request is made even if the API is not enabled.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    404NotFound:
+      description: Not Found. The request endpoint is not valid. This happens if the API endpoint does not exist, or if the API is not enabled.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    405MethodNotAllowed:
+      description: Method Not Allowed. The request method doesn't match the supported API. This happens, for example, if the application calls the API with GET method but the endpoint accepts only POST.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    408RequestTimeout:
+      description: Request Timeout. This indicates that the request from the client timed out and was not completed by the server.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    409Conflict:
+      description: Conflict. The requested operation could not be performed due to a conflicting state that could not be resolved. This usually happens when a CREATE request was performed when there is a pre-existing resource with the same name, and also without one of the options orReplace/ifNotExists.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    500InternalServerError:
+      description: Internal Server Error. The server hit an unrecoverable system error. The response body may include the error code and message for further guidance. The application owner may need to reach out the customer support.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    503ServiceUnavailable:
+      description: Service Unavailable. The request was not processed due to server side timeouts. The application may retry with backoff. The jittered backoff is recommended.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    504GatewayTimeout:
+      description: Gateway Timeout. The request was not processed due to server side timeouts. The application may retry with backoff. The jittered backoff is recommended.
+      headers:
+        X-Snowflake-Request-ID:
+          $ref: '#/components/headers/X-Snowflake-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
