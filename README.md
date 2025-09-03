@@ -57,7 +57,7 @@ curl -X POST https://{ACCOUNT_URL}/api/v2/databases/sales_intelligence/schemas/a
 ```
 
 Alternatively, you can create the Agent in Snowsight navigating to AI & ML » Agents » Create Agent (see step by step 
-in the [QuickStart Guide](https://quickstarts.snowflake.com/guide/getting_started_with_cortex_agents/index.html?index=..%2F..index#0)).
+in the [QuickStart Guide](https://quickstarts.snowflake.com/guide/getting_started_with_cortex_agents/index.html?index=..%2F..index#3)).
 
 #### 5. Run the streamlit
 Now that you have created your agent, run the sample streamlit to interact with it.
