@@ -20,7 +20,7 @@ In this quickstart you will:
 - Create a streamlit application to chat with the Agent via the API
 
 ## Step-By-Step Guide
-You can follow this guide here or in the [QuickStart Guide](https://quickstarts.snowflake.com/guide/getting_started_with_cortex_agents/index.html?index=..%2F..index#0)
+You can follow this guide here or in the [QuickStart Guide](https://quickstarts.snowflake.com/guide/getting_started_with_cortex_agents/index.html#0)
 
 #### 1. Run setup script
 First, let's get your account setup with some sample data. Run the script in `setup.sql` in a worksheet, with 
