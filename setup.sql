@@ -8,11 +8,14 @@ GRANT ROLE SALES_INTELLIGENCE_RL to user IDENTIFIER($my_user);
 -- 2. Create database, schema, and warehouse
 CREATE OR REPLACE DATABASE sales_intelligence;
 CREATE OR REPLACE SCHEMA sales_intelligence.data;
-CREATE OR REPLACE SCHEMA sales_intelligence.agents;
 GRANT USAGE ON DATABASE sales_intelligence TO ROLE sales_intelligence_rl;
-GRANT USAGE ON SCHEMA sales_intelligence.agents TO ROLE sales_intelligence_rl;
 GRANT USAGE ON SCHEMA sales_intelligence.data TO ROLE sales_intelligence_rl;
-GRANT CREATE AGENT ON SCHEMA sales_intelligence.agents TO ROLE sales_intelligence_rl;
+
+CREATE DATABASE IF NOT EXISTS snowflake_intelligence;
+CREATE SCHEMA IF NOT EXISTS snowflake_intelligence.agents;
+GRANT USAGE ON DATABASE snowflake_intelligence TO ROLE sales_intelligence_rl;
+GRANT USAGE ON SCHEMA snowflake_intelligence.agents TO ROLE sales_intelligence_rl;
+GRANT CREATE AGENT ON SCHEMA snowflake_intelligence.agents TO ROLE sales_intelligence_rl;
 
 CREATE OR REPLACE WAREHOUSE sales_intelligence_wh
 WITH 

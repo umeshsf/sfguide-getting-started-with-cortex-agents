@@ -49,7 +49,7 @@ In Snowsight:
 Run the following command on your terminal to create an Agent via the REST API, replacing the PAT token and account URL.
 You can find your account URL in Snowsight: Click on your profile (bottom left corner) » Account » View account details.
 ```
-curl -X POST https://{ACCOUNT_URL}/api/v2/databases/sales_intelligence/schemas/agents/agents \
+curl -X POST https://{ACCOUNT_URL}/api/v2/databases/snowflake_intelligence/schemas/agents/agents \
 -H 'Content-Type: application/json' \
 -H 'Accept: application/json' \
 -H 'Authorization: Bearer {PAT_TOKEN}' \
@@ -58,6 +58,10 @@ curl -X POST https://{ACCOUNT_URL}/api/v2/databases/sales_intelligence/schemas/a
 
 Alternatively, you can create the Agent in Snowsight navigating to AI & ML » Agents » Create Agent (see step by step 
 in the [QuickStart Guide](https://quickstarts.snowflake.com/guide/getting_started_with_cortex_agents/index.html?index=..%2F..index#3)).
+
+After creating you can chat with the Agent via Snowflake Intelligence.
+In Snowsight, click on AI & ML » Snowflake Intelligence, select the `SALES_INTELLIGENCE_AGENT` in the chat bar, and ask
+any questions you'd like!
 
 #### 5. Run the streamlit
 Now that you have created your agent, run the sample streamlit to interact with it.
@@ -71,7 +75,7 @@ pip3 install -r requirements.txt
 
 CORTEX_AGENT_DEMO_PAT=<PAT> \
 CORTEX_AGENT_DEMO_HOST=<ACCOUNT_URL> \
-CORTEX_AGENT_DEMO_DATABASE="SALES_INTELLIGENCE" \
+CORTEX_AGENT_DEMO_DATABASE="SNOWFLAKE_INTELLIGENCE" \
 CORTEX_AGENT_DEMO_SCHEMA="AGENTS" \
 CORTEX_AGENT_DEMO_AGENT="SALES_INTELLIGENCE_AGENT" \
 streamlit run data_agent_demo.py
