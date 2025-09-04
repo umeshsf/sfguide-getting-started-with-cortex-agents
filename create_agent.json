@@ -27,7 +27,7 @@
       "semantic_model_file": "@sales_intelligence.data.models/sales_metrics_model.yaml",
       "execution_environment": {
         "type": "warehouse",
-        "warehouse": "sales_intelligence_wh"
+        "warehouse": "SALES_INTELLIGENCE_WH"
       }
     },
     "sales_conversation_search": {
