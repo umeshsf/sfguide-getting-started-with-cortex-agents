@@ -24,12 +24,15 @@ from models import (
     ToolUseEventData,
 )
 
-PAT = os.getenv("CORTEX_AGENT_DEMO_PAT")
-HOST = os.getenv("CORTEX_AGENT_DEMO_HOST")
-DATABASE = os.getenv("CORTEX_AGENT_DEMO_DATABASE", "SNOWFLAKE_INTELLIGENCE")
-SCHEMA = os.getenv("CORTEX_AGENT_DEMO_SCHEMA", "AGENTS")
-AGENT = os.getenv("CORTEX_AGENT_DEMO_AGENT", "SALES_INTELLIGENCE_AGENT")
+PAT = 'your generated pat token goes here'
+HOST = 'orgname-accountname.snowflakecomputing.com'
+# your agent name when you created. 
+# RUN in snowsheet: show agents in account;
+AGENT = 'MARKETING_AI'
 
+
+DATABASE = 'snowflake_intelligence'
+SCHEMA = 'agents'
 
 def agent_run() -> requests.Response:
     """Calls the REST API and returns a streaming client."""
