@@ -45,7 +45,7 @@ In Snowsight:
 - Select `Single Role` and select `sales_intelligence_rl`
 - Copy and save the token for later (you will not be able to see it again)
 
-#### 4. Create the Agent
+#### 4. Create the Agent using UI, ignore following
 Run the following command on your terminal to create an Agent via the REST API, replacing the PAT token and account URL.
 You can find your account URL in Snowsight: Click on your profile (bottom left corner) » Account » View account details.
 ```
@@ -73,11 +73,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip3 install -r requirements.txt
 
-CORTEX_AGENT_DEMO_PAT=<PAT> \
-CORTEX_AGENT_DEMO_HOST=<ACCOUNT_URL> \
-CORTEX_AGENT_DEMO_DATABASE="SNOWFLAKE_INTELLIGENCE" \
-CORTEX_AGENT_DEMO_SCHEMA="AGENTS" \
-CORTEX_AGENT_DEMO_AGENT="SALES_INTELLIGENCE_AGENT" \
+
 streamlit run data_agent_demo.py
 ```
 
